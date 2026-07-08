@@ -25733,5 +25733,124 @@ Be specific and actionable. Format as structured JSON.`;
   window.t3mpTour = { steps: steps, start: start, next: next, prev: prev, end: end, goto: goto, position: position };
 })();
 </script>
+
+<!-- Action Receipts panel (#34): surfaces pending /api/approvals receipts in the War Room -->
+<script>
+(function () {
+  'use strict';
+  // Action Receipts panel (#34): surface pending /api/approvals receipts in the War Room
+  // so an operator never launches with stale or unexpected approval state. Polls only while
+  // the War Room view is active (mirrors the existing refreshSystemStatus cadence).
+  var POLL_MS = 4000;
+
+  // Client-side mirror of the server's isLocalOrPrivateTarget (src/server.ts) — display only.
+  // If the API later annotates each approval with `localTarget`, that authoritative value wins.
+  function isLocalTarget(target) {
+    var t = String(target == null ? '' : target).trim().toLowerCase();
+    if (!t) return true;
+    var host = t.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').split('/')[0].split('?')[0];
+    var bracket = host.match(/^\[([^\]]+)\]/); // [::1]:8080 -> ::1
+    if (bracket) host = bracket[1];
+    else if ((host.match(/:/g) || []).length <= 1) host = host.split(':')[0]; // host:port
+    // else: bare IPv6 (2+ colons) — keep intact so ::1 survives
+    if (['local-lab', 'localhost', '127.0.0.1', '::1', '0.0.0.0', ''].indexOf(host) !== -1) return true;
+    if (/^127\./.test(host)) return true;
+    if (host.slice(-6) === '.local') return true;
+    if (/^10\./.test(host) || /^192\.168\./.test(host)) return true;
+    var m = host.match(/^172\.(\d{1,2})\./);
+    return !!(m && +m[1] >= 16 && +m[1] <= 31);
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function ensureStyle() {
+    if (document.getElementById('ar-panel-style')) return;
+    var st = document.createElement('style');
+    st.id = 'ar-panel-style';
+    st.textContent = [
+      '#actionReceiptsPanel{border:1px solid #6b4bb0;border-radius:10px;background:rgba(40,28,66,.55);margin:0 0 16px;padding:12px 16px;font-size:13px}',
+      '#actionReceiptsPanel .ar-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-weight:600;color:#d8c9ff}',
+      '#actionReceiptsPanel .ar-badge{background:#7a3af0;color:#fff;border-radius:999px;padding:1px 9px;font-size:12px}',
+      '#actionReceiptsPanel .ar-item{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:8px 0;border-top:1px solid rgba(255,255,255,.08)}',
+      '#actionReceiptsPanel code{color:#e6dcff;word-break:break-all}',
+      '#actionReceiptsPanel .ar-tag{font-size:10px;text-transform:uppercase;letter-spacing:.04em;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle}',
+      '#actionReceiptsPanel .ar-tag.local{background:#1f4d2e;color:#8ef0b0}',
+      '#actionReceiptsPanel .ar-tag.external{background:#5c1f1f;color:#ff9d9d}',
+      '#actionReceiptsPanel .ar-reason{color:#b6a9d6;font-size:12px;margin-top:2px}',
+      '#actionReceiptsPanel .ar-actions{display:flex;gap:6px;flex:0 0 auto}',
+      '#actionReceiptsPanel button{cursor:pointer;border:0;border-radius:6px;padding:4px 10px;font-size:12px;color:#fff}',
+      '#actionReceiptsPanel .ar-approve{background:#2e7d46}',
+      '#actionReceiptsPanel .ar-reject{background:#8a2b2b}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+
+  function panelEl() {
+    var el = document.getElementById('actionReceiptsPanel');
+    if (el) return el;
+    var host = document.getElementById('page-warroom');
+    if (!host) return null;
+    ensureStyle();
+    el = document.createElement('div');
+    el.id = 'actionReceiptsPanel';
+    el.style.display = 'none';
+    host.insertBefore(el, host.firstChild);
+    return el;
+  }
+
+  function decide(id, decision) {
+    if (!id) return;
+    Promise.resolve(T3MP3ST_API.post('/api/approvals/' + encodeURIComponent(id) + '/' + decision, {}))
+      .catch(function (e) { console.error('[ActionReceipts]', decision, 'failed', e); })
+      .then(refresh);
+  }
+  window.__arDecision = decide;
+
+  function render(list) {
+    var el = panelEl();
+    if (!el) return;
+    if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    var rows = list.map(function (a) {
+      var local = (a && Object.prototype.hasOwnProperty.call(a, 'localTarget')) ? !!a.localTarget : isLocalTarget(a.target);
+      var tag = local
+        ? '<span class="ar-tag local">local</span>'
+        : '<span class="ar-tag external">external</span>';
+      return '<div class="ar-item"><div>'
+        + '<div><b>' + esc(a.action) + '</b> &rarr; <code>' + esc(a.target) + '</code>' + tag + '</div>'
+        + '<div class="ar-reason">' + esc(a.reason) + '</div></div>'
+        + '<div class="ar-actions">'
+        + '<button class="ar-approve" onclick="__arDecision(&quot;' + esc(a.id) + '&quot;,&quot;approve&quot;)">Approve</button>'
+        + '<button class="ar-reject" onclick="__arDecision(&quot;' + esc(a.id) + '&quot;,&quot;reject&quot;)">Reject</button>'
+        + '</div></div>';
+    }).join('');
+    el.innerHTML = '<div class="ar-head">&#129534; Pending action receipts '
+      + '<span class="ar-badge">' + list.length + '</span></div>' + rows;
+    el.style.display = 'block';
+  }
+
+  function refresh() {
+    return Promise.resolve(T3MP3ST_API.get('/api/approvals?status=pending'))
+      .then(function (data) {
+        var list = (data && Array.isArray(data.approvals)) ? data.approvals : [];
+        render(list);
+      })
+      .catch(function () { /* transient fetch error — keep the last render */ });
+  }
+
+  function warRoomActive() {
+    var p = document.getElementById('page-warroom');
+    return !!(p && p.classList.contains('active'));
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    refresh();
+    setInterval(function () { if (warRoomActive()) refresh(); }, POLL_MS);
+  });
+})();
+</script>
 </body>
 </html>
