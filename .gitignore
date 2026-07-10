@@ -55,3 +55,4 @@ bench/nyu/
 # sensitive export leak-gate denylist (operator handle + embargoed disclosure
 # targets + personal vault) loaded by the exporter — never commit
 scripts/.export-denylist.local
+coverage/
