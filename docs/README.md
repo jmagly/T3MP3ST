@@ -22,6 +22,12 @@ Start here when you want to install, run, integrate, or contribute to T3MP3ST.
 | [Contribution Receipts](CONTRIBUTION_RECEIPTS.md) | Evidence template for PRs and claim changes |
 | [Pull Request Delivery](PULL_REQUEST_DELIVERY.md) | Contributor and maintainer PR checklist |
 
+Preview this documentation as a Pagenary site:
+
+```bash
+npm run docs:serve
+```
+
 ## Benchmarks And Provenance
 
 | Doc | Use it for |

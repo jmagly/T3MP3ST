@@ -1,3 +1,14 @@
+---
+title: "Developer Guide"
+summary: "Architecture, local development, scripts, extension points, and release checks."
+description: "Architecture, local development, scripts, extension points, and release checks."
+audience: ["developer", "maintainer"]
+category: "developer"
+status: "current"
+source: "T3MP3ST repository"
+sourcePath: "docs/DEVELOPER_GUIDE.md"
+updated: "2026-07-20"
+---
 # T3MP3ST Developer Guide
 
 This guide maps the codebase to the public surfaces documented for operators and integrators.
@@ -104,7 +115,7 @@ For tests, prefer `createTestTempest()` unless the test specifically needs a pro
 
 `src/server.ts` hosts the War Room at `/ui/` and exposes JSON endpoints under `/api/`. It binds to `127.0.0.1:3333` by default. The server includes a localhost CORS/origin guard and a loopback Host-header guard because many endpoints can dispatch local tools.
 
-See [API Reference](API_REFERENCE.md) for route groups.
+See [API Reference](#api-reference) for route groups.
 
 Provider state comes from `src/config/index.ts`. Current provider families include hosted OpenAI-compatible APIs, direct Anthropic/OpenAI-style APIs, DeepSeek, LiteLLM proxy, local OpenAI-compatible servers, and connected local coding-agent CLIs.
 
@@ -132,7 +143,7 @@ Dangerous tools must not be exposed through generic command execution. Add narro
 
 ## MCP Server
 
-`npm run mcp` starts the stdio MCP server from `src/mcp-server.ts`. It currently exposes one tool, `security_recon`, for DNS and nmap reconnaissance against a hostname or IP. See [MCP Guide](MCP_GUIDE.md).
+`npm run mcp` starts the stdio MCP server from `src/mcp-server.ts`. It currently exposes one tool, `security_recon`, for DNS and nmap reconnaissance against a hostname or IP. See [MCP Guide](#mcp-guide).
 
 ## Documentation Sync
 
@@ -163,4 +174,4 @@ npm run verify-claims
 npm run arsenal:smoke
 ```
 
-If a check cannot run in your environment, document the reason in the PR using [Contribution Receipts](CONTRIBUTION_RECEIPTS.md).
+If a check cannot run in your environment, document the reason in the PR using [Contribution Receipts](#contribution-receipts).
