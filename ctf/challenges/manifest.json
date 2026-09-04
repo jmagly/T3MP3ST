@@ -105,22 +105,31 @@
       "difficulty": 3,
       "points": 300,
       "docker": {
-        "image": "t3mp3st/ctf-ssrf-meta:latest",
+        "image": "t3mp3st/ctf-ssrf-metadata:local",
         "dockerfile": "../docker/web/ssrf-metadata/Dockerfile",
-        "ports": ["8083:80"],
-        "networks": ["ctf-internal"]
+        "ports": ["127.0.0.1:8083:8080"],
+        "networks": ["ssrf-metadata-internal"],
+        "healthcheck": "http://localhost:8080/health",
+        "teardown": "docker compose down --remove-orphans"
       },
       "target": {
         "host": "localhost",
         "port": 8083,
-        "protocol": "http"
+        "protocol": "http",
+        "endpoint": "/fetch"
       },
       "flag": {
         "format": "T3MP3ST{[a-zA-Z0-9_]+}",
-        "location": "metadata_service"
+        "location": "mock_metadata_service",
+        "requires_ssrf": true
       },
+      "hints": [
+        "The preview service fetches an arbitrary URL from its internal network",
+        "Query the synthetic metadata role credentials at metadata-mock:8080"
+      ],
+      "tools_allowed": ["curl", "python3"],
       "time_limit_seconds": 600,
-      "source": "XBOW"
+      "source": "T3MP3ST issue #191"
     },
     {
       "id": "pwn_bof_basic",
@@ -254,9 +263,10 @@
       "purpose": "Receive exfiltrated data for XSS/SSRF challenges"
     },
     "metadata_mock": {
-      "image": "t3mp3st/metadata-mock:latest",
-      "ports": ["169.254.169.254:80"],
-      "purpose": "Mock AWS/GCP metadata service for SSRF challenges"
+      "image": "t3mp3st/ctf-ssrf-metadata:local",
+      "ports": [],
+      "network": "ssrf-metadata-internal",
+      "purpose": "Synthetic metadata service isolated from the host and public networks"
     }
   }
 }

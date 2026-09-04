@@ -211,6 +211,29 @@ The final teardown command is mandatory. See
 `docker/web/xss-stored/PROVENANCE.md` for origin, license, intended
 vulnerability, flag handling, reproduction, and sensitive-data review.
 
+### SSRF mock-metadata lab
+
+The `ssrf-metadata` challenge and its visibly synthetic `metadata-mock`
+service share an `internal: true` network with no external route. Neither is
+host-published. A constrained gateway owns loopback-only port
+`127.0.0.1:8083` and exposes only the challenge paths, so the intentionally
+unvalidated server-side fetch can reach the mock but not a real link-local
+metadata endpoint or the public internet.
+
+```bash
+npm run test:ctf-ssrf
+docker compose -f ctf/docker-compose.yml up -d --build ssrf-metadata-gateway
+curl --fail http://127.0.0.1:8083/health
+python3 ctf/docker/web/ssrf-metadata/solve.py --url http://127.0.0.1:8083
+docker compose -f ctf/docker-compose.yml down --remove-orphans
+```
+
+The final teardown command is mandatory. The smoke test includes negative
+requests to a real link-local metadata address and a public documentation
+address. See `docker/web/ssrf-metadata/PROVENANCE.md` for origin, license,
+intended vulnerability, synthetic credential handling, network boundary, and
+rollback.
+
 ## Comparison to Industry Benchmarks
 
 | Benchmark | Method | Verification | Our Approach |
