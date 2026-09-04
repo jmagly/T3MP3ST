@@ -1,0 +1,11 @@
+# SSRF mock-metadata challenge provenance
+- Origin: implemented for T3MP3ST issue #191 after decomposition of proposal #163. The focused design was freshly implemented; the proposal's Flask service and inline metadata mock informed the scenario only. Thanks @xxmafiaxxx for the original proposal and prior implementation in #163, which informed this focused change.
+- License: AGPL-3.0-or-later, matching the repository.
+- Intended vulnerability: the preview endpoint sends an arbitrary user-supplied HTTP request from the challenge service. The intended target is the lab-only `metadata-mock` hostname; application validation deliberately does not prevent SSRF.
+- Flag handling: `T3MP3ST{ssrf_t0_m0ck_m3t4d4t4}` is a committed synthetic lab constant returned as the mock `SecretAccessKey`. Every adjacent access key and token is labeled and visibly synthetic.
+- Reproduction: `python3 ctf/docker/web/ssrf-metadata/solve.py` validates offline evidence; the README documents the live smoke and negative-network commands.
+- Rollback: delete `docker/web/ssrf-metadata/`, the three `ssrf-*`/`metadata-mock` compose services plus the two SSRF networks, the `web_ssrf_metadata` manifest updates, and `scripts/test-ctf-ssrf-metadata.mjs`; the lab leaves no host state, volumes, or external network.
+- Sensitive-data review: all flags, role names, access keys, and tokens are synthetic constants created for this lab. No acquired data, production secret, host credential, cloud credential, environment secret, or user identifier is present or mounted.
+- Container trust: all three services share the sibling labs' digest-pinned official Python base. They have no package-manager or third-party runtime dependencies. The vulnerable service and metadata mock share only an `internal: true` network with default-deny external egress; neither is host-published. A separately constrained gateway owns the loopback host port and exposes only `/`, `/health`, and `/fetch`.
+- Network-negative test: the smoke contract verifies the intended mock succeeds while the real link-local metadata address and a public documentation address both return `502` from the vulnerable service. The compose network is `internal: true`, and no host credential or production-data mount exists.
+- Verification date: 2026-09-04.
